@@ -79,7 +79,7 @@
     //Key<Guestbook> theBook = Key.create(Guestbook.class, guestbookName);
 
 
-
+//yogesh
     // Run an ancestor query to ensure we see the most up-to-date
     // view of the Greetings belonging <p><b>${fn:escapeXml(greeting_user)}</b> wrote:</p>
 
