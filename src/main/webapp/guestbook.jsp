@@ -7,12 +7,16 @@
 <%-- //[START imports]--%>
 <%@ page import="com.example.guestbook.Greeting" %>
 <%@ page import="com.example.guestbook.Guestbook" %>
-<%@ page import="com.googlecode.objectify.Key" %>
+
 <%@ page import="com.googlecode.objectify.ObjectifyService" %>
 <%-- //[END imports]--%>
 
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.ArrayList" %>
+<%@ page import="com.google.appengine.api.urlfetch.FetchOptions" %>
+<%@ page import="javax.swing.text.html.parser.Entity" %>
+<%@ page import="com.google.appengine.api.datastore.*" %>
+
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 
 <html>
@@ -47,8 +51,8 @@
 
 
 <%
-    } else {
-        //give sign in link
+} else {
+    //give sign in link
 %>
 <p>Hello!
     <a href="<%= userService.createLoginURL(request.getRequestURI()) %>">Sign in</a>
@@ -56,56 +60,67 @@
 <%
     }
 %>
+<%
+    DatastoreService datastore= DatastoreServiceFactory.getDatastoreService();
+    Key guestbookKey = KeyFactory.createKey("Guestbook", guestbookName);
+    Query query= new Query("Greeting",guestbookKey).addSort("date",Query.SortDirection.DESCENDING);
+   // Query query = new Query("Greeting");//this will just list
+    //PreparedQuery pq = datastore.prepare(query);
 
+
+    List<com.google.appengine.api.datastore.Entity> greet = datastore.prepare(query).asList(com.google.appengine.api.datastore.FetchOptions.Builder.withLimit(10));
+
+
+%>
 <%//- See more at: http://www.javawebtutor.com/articles/jsp/jspform.html#sthash.TaiD53tD.dpuf%>
 <%-- //[START datastore]--%>
 <%
     // Create the correct Ancestor key
-      Key<Guestbook> theBook = Key.create(Guestbook.class, guestbookName);
+    //Key<Guestbook> theBook = Key.create(Guestbook.class, guestbookName);
 
 
 
     // Run an ancestor query to ensure we see the most up-to-date
     // view of the Greetings belonging <p><b>${fn:escapeXml(greeting_user)}</b> wrote:</p>
 
-      List<Greeting> greetings = ObjectifyService.ofy()
-          .load()
-          .type(Greeting.class) // We want only Greetings
-          .ancestor(theBook)    // Anyone in this book
-          .order("-date")       // Most recent first - date is indexed.
-          .limit(5)             // Only show 5 of them.
-          .list();
+    List<Greeting> greetings = ObjectifyService.ofy()
+            .load()
+            .type(Greeting.class) // We want only Greetings
+            .ancestor(guestbookKey)    // Anyone in this book
+            .order("-date")       // Most recent first - date is indexed.
+            .limit(5)             // Only show 5 of them.
+            .list();
 
     if (greetings.isEmpty()) {
 %>
 <p>Guestbook '${fn:escapeXml(guestbookName)}' has no messages.</p>
 <%
-    } else {
+} else {
 %>
 <p>Messages in Guestbook '${fn:escapeXml(guestbookName)}'.</p>
 <%String author;
-g1.add(guestbookName);
+    g1.add(guestbookName);
 %>
 <%
-      // Look at all of our greetings
-        for (Greeting greeting : greetings) {
-            pageContext.setAttribute("greeting_content", greeting.content);
+    // Look at all of our greetings
+    for (Greeting greeting : greetings) {
+        pageContext.setAttribute("greeting_content", greeting.content);
 
 
-            if (greeting.author_email == null) {
-                author = "An anonymous person";
-            } else {
-                author = greeting.author_email;
-                String author_id = greeting.author_id;
+        if (greeting.author_email == null) {
+            author = "An anonymous person";
+        } else {
+            author = greeting.author_email;
+            String author_id = greeting.author_id;
 
-                if (user != null && user.getUserId().equals(author_id)) {
-                    author += " (You)";
-                }
+            if (user != null && user.getUserId().equals(author_id)) {
+                author += " (You)";
             }
-            pageContext.setAttribute("greeting_user", author);
+        }
+        pageContext.setAttribute("greeting_user", author);
 
-            l1.add(author);
-            l2.add(greeting.content);
+        l1.add(author);
+        l2.add(greeting.content);
 //rough
           /*  for(Greeting i : greetings)
             {
@@ -123,7 +138,7 @@ g1.add(guestbookName);
 
 
 <%
-            }
+        }
 
     }
 %>
@@ -140,25 +155,57 @@ g1.add(guestbookName);
     <div><input type="submit" value="Switch Guestbook"/></div>
 </form>
 
+<%
+   // String
+    for(int i=0;i<greet.size();i++)
+    {
+      //  listuser = l1.get(i);
+      //  listcontent = l2.get(i);
+        pageContext.setAttribute("list_user", greet.get(i));
+       // pageContext.setAttribute("list_content", content);
+
+
+%>
+
+<p>Username: <b>${fn:escapeXml(list_user)}</b></p>
 
 <%
-     String listuser;
+
+    }
+%>
+
+%>
+<%--
+<table border="1">
+    <tr>
+        <th>User Names</th>
+        <th>Contents</th>
+    </tr>
+        <tr>
+            <td>${fn:escapeXml(greet.author)}</td>
+            <td>${fn:escapeXml(greet.content)}</td>
+        </tr>
+    </c:forEach>
+</table>
+<%--
+<%
+    String listuser;
     String listcontent;
     String guest;
     int j=0;
     while(j<k)
     {
-         guest = g1.get(j);
+        guest = g1.get(j);
         pageContext.setAttribute("guestbook", guest);
-      %>  <p>Current guestbook: <b>${fn:escapeXml(guestbook)}</b></p>
-   <% for(int i=0; i<l1.size();i++)
-    {
+%>  <p>Current guestbook: <b>${fn:escapeXml(guestbook)}</b></p>
+<% for(int i=0; i<l1.size();i++)
+{
 
 
-        listuser = l1.get(i);
-        listcontent = l2.get(i);
-         pageContext.setAttribute("list_user", listuser);
-         pageContext.setAttribute("list_content", listcontent);
+    listuser = l1.get(i);
+    listcontent = l2.get(i);
+    pageContext.setAttribute("list_user", listuser);
+    pageContext.setAttribute("list_content", listcontent);
 
 
 %>
@@ -166,10 +213,14 @@ g1.add(guestbookName);
 <p>Username: <b>${fn:escapeXml(list_user)}</b></p>
 <p>Content:${fn:escapeXml(list_content)}</p>
 <%
-    }
-    j++;
+        }
+        j++;
     }
 %>
+
+<%
+
+%> --%>
 </body>
 </html>
 <%-- //[END all]--%>
